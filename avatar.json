@@ -2,7 +2,8 @@
   "name": "CalciumECS",
   "description": "a figura ecs system",
   "authors": [
-    "ConstantDust"
+    "ConstantDust",
+    "bakpakin"
   ],
   "color": "#a155da"
 }
