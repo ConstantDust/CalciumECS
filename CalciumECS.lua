@@ -7,14 +7,6 @@
 -------------------------------------------------------------------------------
 local calcium = {}
 
--- Local versions of standard lua functions
-local table_insert = table.insert
-local table_remove = table.remove
-local table_sort = table.sort
-local setmetatable = setmetatable
-local type = type
-local select = select
-
 -- Local versions of the library functions
 local calcium_manageEntities
 local calcium_manageSystems
@@ -40,7 +32,6 @@ end
 local systemTableKey = {"SYSTEM_TABLE_KEY"}
 local function isSystem(table) return table[systemTableKey] end
 
--- Update function for all Processing Systems.
 local function processingSystemUpdate(system, dt)
     local preProcess = system.preProcess
     local process = system.process
@@ -75,7 +66,6 @@ local function processingSystemUpdate(system, dt)
     end
 end
 
--- Sorts Systems by a function when modified
 local function sortedSystemOnModify(system)
     local entities = system.entities
     local indices = system.indices
@@ -93,14 +83,12 @@ local function sortedSystemOnModify(system)
     end
 end
 
---- new system 
 function calcium.system(table)
     table = table or {}
     table[systemTableKey] = true
     return table
 end
 
--- new ticked system
 function calcium.processingSystem(table)
     table = table or {}
     table[systemTableKey] = true
@@ -108,7 +96,6 @@ function calcium.processingSystem(table)
     return table
 end
 
--- new sorted system
 function calcium.sortedSystem(table)
     table = table or {}
     table[systemTableKey] = true
@@ -116,7 +103,6 @@ function calcium.sortedSystem(table)
     return table
 end
 
--- new sorted sytem that is ticked
 function calcium.sortedProcessingSystem(table)
     table = table or {}
     table[systemTableKey] = true
@@ -146,37 +132,34 @@ end
 function calcium.addEntity(world, entity)
     local dirtyEntities = world.dirtyEntities
     dirtyEntities[#dirtyEntities + 1] = entity
+
     return entity
 end
 calcium_addEntity = calcium.addEntity
 
---- Adds a System to the world. Returns the System.
 function calcium.addSystem(world, system)
     assert(system.world == nil, "System already belongs to a World.")
+
     local systemToAdd = world.systemsToAdd
     systemToAdd[#systemToAdd + 1] = system
     system.world = world
+
     return system
 end
 calcium_addSystem = calcium.addSystem
 
---- Shortcut for adding multiple things
 function calcium.add(world, ...)
     for i = 1, select("#", ...) do
         local obj = select(i, ...)
         if obj then
-            if isSystem(obj) then
-                calcium_addSystem(world, obj)
-            else -- Assume obj is an Entity
-                calcium_addEntity(world, obj)
-            end
+            if isSystem(obj) then calcium_addSystem(world, obj)
+            else calcium_addEntity(world, obj) end
         end
     end
     return ...
 end
 calcium_add = calcium.add
 
---- Removes an entity
 function calcium.removeEntity(world, entity)
     local entityToRemove = world.entityRemovalCache
     entityToRemove[#entityToRemove + 1] = entity
@@ -184,7 +167,6 @@ function calcium.removeEntity(world, entity)
 end
 calcium_removeEntity = calcium.removeEntity
 
---- Removes a system
 function calcium.removeSystem(world, system)
     assert(system.world == world, "System does not belong to this World.")
     local systemToRemove = world.systemsToRemove
@@ -193,16 +175,13 @@ function calcium.removeSystem(world, system)
 end
 calcium_removeSystem = calcium.removeSystem
 
---- Shortcut for removing multiple things
 function calcium.remove(world, ...)
     for i = 1, select("#", ...) do
         local obj = select(i, ...)
-        if obj then
-            if isSystem(obj) then
-                calcium_removeSystem(world, obj)
-            else -- Assume obj is an Entity
-                calcium_removeEntity(world, obj)
-            end
+
+        if (obj) then
+            if isSystem(obj) then calcium_removeSystem(world, obj)
+            else calcium_removeEntity(world, obj) end
         end
     end
     return ...
@@ -212,9 +191,7 @@ function calcium_manageSystems(world)
     local systemToAdd, systemToRemove = world.systemsToAdd, world.systemsToRemove
 
     -- Early exit
-    if #systemToAdd == 0 and #systemToRemove == 0 then
-        return
-    end
+    if (#systemToAdd == 0 and #systemToRemove == 0) then return end
 
     world.systemsToAdd = {}
     world.systemsToRemove = {}
@@ -226,21 +203,22 @@ function calcium_manageSystems(world)
     for i = 1, #systemToRemove do
         local system = systemToRemove[i]
         local id = system.id
+
         local onRemove = system.onRemove
-        if onRemove and not system.nocache then
+        if (onRemove) and not system.nocache then
             local entityList = system.entities
             for j = 1, #entityList do
                 onRemove(system, entityList[j])
             end
         end
-        table_remove(systems, id)
+
+        table.remove(systems, id)
         for j = id, #systems do
             systems[j].id = j
         end
+
         local onRemoveFromWorld = system.onRemoveFromWorld
-        if onRemoveFromWorld then
-            onRemoveFromWorld(system, world)
-        end
+        if (onRemoveFromWorld) then onRemoveFromWorld(system, world) end
         systemToRemove[i] = nil
 
         -- Clean up System
@@ -324,16 +302,16 @@ function calcium_manageEntities(world)
         for j = 1, #systems do
             local system = systems[j]
             if not system.nocache then
-                local ses = system.entities
-                local seis = system.indices
-                local id = seis[entity]
+                local systemEntities = system.entities
+                local systemIndicies = system.indices
+                local id = systemIndicies[entity]
                 local filter = system.filter
                 if filter and filter(system, entity) then
                     if not id then
                         system.modified = true
-                        id = #ses + 1
-                        ses[id] = entity
-                        seis[entity] = id
+                        id = #systemEntities + 1
+                        systemEntities[id] = entity
+                        systemIndicies[entity] = id
                         local onAdd = system.onAdd
                         if onAdd then
                             onAdd(system, entity)
@@ -341,11 +319,11 @@ function calcium_manageEntities(world)
                     end
                 elseif id then
                     system.modified = true
-                    local tmpEntity = ses[#ses]
-                    ses[id] = tmpEntity
-                    seis[tmpEntity] = id
-                    seis[entity] = nil
-                    ses[#ses] = nil
+                    local tmpEntity = systemEntities[#systemEntities]
+                    systemEntities[id] = tmpEntity
+                    systemIndicies[tmpEntity] = id
+                    systemIndicies[entity] = nil
+                    systemEntities[#systemEntities] = nil
                     local onRemove = system.onRemove
                     if onRemove then
                         onRemove(system, entity)
@@ -372,16 +350,16 @@ function calcium_manageEntities(world)
             for j = 1, #systems do
                 local system = systems[j]
                 if not system.nocache then
-                    local ses = system.entities
-                    local seis = system.indices
-                    local id = seis[entity]
+                    local systemEntities = system.entities
+                    local systemIndicies = system.indices
+                    local id = systemIndicies[entity]
                     if id then
                         system.modified = true
-                        local tmpEntity = ses[#ses]
-                        ses[id] = tmpEntity
-                        seis[tmpEntity] = id
-                        seis[entity] = nil
-                        ses[#ses] = nil
+                        local tmpEntity = systemEntities[#systemEntities]
+                        systemEntities[id] = tmpEntity
+                        systemIndicies[tmpEntity] = id
+                        systemIndicies[entity] = nil
+                        systemEntities[#systemEntities] = nil
                         local onRemove = system.onRemove
                         if onRemove then
                             onRemove(system, entity)
@@ -472,9 +450,9 @@ function calcium.update(world, dt, filter)
 end
 
 function calcium.clearEntities(world)
-    local el = world.entities
-    for i = 1, #el do
-        calcium_removeEntity(world, el[i])
+    local entities = world.entities
+    for i = 1, #entities do
+        calcium_removeEntity(world, entities[i])
     end
 end
 function calcium.clearSystems(world)
@@ -489,10 +467,10 @@ function calcium.setSystemId(world, system, id)
     local oldId = system.id
     local systems = world.systems
 
-    if id < 0 then id = #world.systems + 1 + id end
+    if (id < 0) then id = #world.systems + 1 + id end
 
-    table_remove(systems, oldId)
-    table_insert(systems, id, system)
+    table.remove(systems, oldId)
+    table.insert(systems, id, system)
 
     for i = oldId, id, id >= oldId and 1 or -1 do
         systems[i].id = i
@@ -554,11 +532,7 @@ do
 
     function filterJoin(...)
         local state, value = pcall(filterJoinRaw, ...)
-        if state then
-            return value
-        else
-            return nil, value
-        end
+        if state then return value else return nil, value end
     end
 
     local function buildPart(str)
