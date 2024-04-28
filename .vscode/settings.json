@@ -1,0 +1,9 @@
+{
+    "workbench.iconTheme": "material-icon-theme",
+    "Lua.diagnostics.globals": [
+        "ecs_world",
+        "ecs",
+        "player_entity",
+        "events"
+    ]
+}
