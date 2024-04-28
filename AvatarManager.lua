@@ -2,8 +2,8 @@ ecs = require("CalciumECS")
 
 ecs_world = ecs.world()
 
-local exampleChatSystem = tiny.processingSystem()
-exampleChatSystem.filter = tiny.requireAll("name", "msg")
+local exampleChatSystem = ecs.processingSystem()
+exampleChatSystem.filter = ecs.requireAll("name", "msg")
 function exampleChatSystem:process(e, dt)
     print(("%s says: %q."):format(e.name, e.msg))
 end
