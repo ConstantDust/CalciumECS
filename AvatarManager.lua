@@ -5,7 +5,7 @@ ecs_world = ecs.world()
 local exampleChatSystem = ecs.processingSystem()
 exampleChatSystem.filter = ecs.requireAll("name", "msg")
 function exampleChatSystem:process(e, dt)
-    print(("%s says: %q."):format(e.name, e.msg))
+    --log(("%s says: %q."):format(e.name, e.msg))
 end
 
 local joe = {
@@ -22,7 +22,7 @@ local bob = {
     hairColor = "black"
 }
 
-ecs.add(ecs_world, bob, joe)
+ecs.add(ecs_world, exampleChatSystem, bob, joe)
 
 -- update calcium every tick
 local lastTimeStep = client:getSystemTime() / 1000

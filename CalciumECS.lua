@@ -7,12 +7,13 @@
 -------------------------------------------------------------------------------
 local calcium = {}
 
--- Local versions of the library functions
 local calcium_manageEntities
 local calcium_manageSystems
+
 local calcium_addEntity
 local calcium_addSystem
 local calcium_add
+
 local calcium_removeEntity
 local calcium_removeSystem
 
@@ -25,27 +26,24 @@ function calcium.rejectAll(...) return filterJoin('not', ' and ', ...) end
 function calcium.rejectAny(...) return filterJoin('not', ' or ', ...) end
 function calcium.filter(pattern)
     local state, value = pcall(filterBuildString, pattern)
-
     if state then return value else return nil, value end
 end
 
-local systemTableKey = {"SYSTEM_TABLE_KEY"}
-local function isSystem(table) return table[systemTableKey] end
+local systemKey = {"SYS_KEY"}
+local function isSystem(table) return table[systemKey] end
 
 local function processingSystemUpdate(system, dt)
     local preProcess = system.preProcess
     local process = system.process
     local postProcess = system.postProcess
 
-    if preProcess then
-        preProcess(system, dt)
-    end
+    if (preProcess) then preProcess(system, dt) end
 
-    if process then
-        if system.nocache then
+    if (process) then
+        if (system.nocache) then
             local entities = system.world.entities
             local filter = system.filter
-            if filter then
+            if (filter) then
                 for i = 1, #entities do
                     local entity = entities[i]
                     if filter(system, entity) then
@@ -61,9 +59,7 @@ local function processingSystemUpdate(system, dt)
         end
     end
 
-    if postProcess then
-        postProcess(system, dt)
-    end
+    if (postProcess) then postProcess(system, dt) end
 end
 
 local function sortedSystemOnModify(system)
@@ -77,7 +73,7 @@ local function sortedSystemOnModify(system)
         end
         system.sortDelegate = sortDelegate
     end
-    table_sort(entities, sortDelegate)
+    table.sort(entities, sortDelegate)
     for i = 1, #entities do
         indices[entities[i]] = i
     end
@@ -85,27 +81,27 @@ end
 
 function calcium.system(table)
     table = table or {}
-    table[systemTableKey] = true
+    table[systemKey] = true
     return table
 end
 
 function calcium.processingSystem(table)
     table = table or {}
-    table[systemTableKey] = true
+    table[systemKey] = true
     table.update = processingSystemUpdate
     return table
 end
 
 function calcium.sortedSystem(table)
     table = table or {}
-    table[systemTableKey] = true
+    table[systemKey] = true
     table.onModify = sortedSystemOnModify
     return table
 end
 
 function calcium.sortedProcessingSystem(table)
     table = table or {}
-    table[systemTableKey] = true
+    table[systemKey] = true
     table.update = processingSystemUpdate
     table.onModify = sortedSystemOnModify
     return table
@@ -525,7 +521,7 @@ do
             table.concat(accum, seperator))
         local loader, error = loadstring(source)
         if error then
-            erroror(error)
+            print('ERR:'.. (error))
         end
         return loader(...)
     end
@@ -538,10 +534,12 @@ do
     local function buildPart(str)
         local accum = {}
         local subParts = {}
+
         str = str:gsub('%b()', function(p)
             subParts[#subParts + 1] = buildPart(p:sub(2, -2))
             return ('\255%d'):format(#subParts)
         end)
+
         for invert, part, sep in str:gmatch('(%!?)([^%|%&%!]+)([%|%&]?)') do
             if part:match('^\255%d+$') then
                 local partId = tonumber(part:match(part:sub(2)))
@@ -549,7 +547,7 @@ do
             else
                 accum[#accum + 1] = ("(e[%s] %s nil)"):format(make_safe(part), invert == '' and '~=' or '==')
             end
-            if sep ~= '' then
+            if (sep ~= '') then
                 accum[#accum + 1] = (sep == '|' and ' or ' or ' and ')
             end
         end
